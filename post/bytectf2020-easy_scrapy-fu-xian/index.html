@@ -13,7 +13,7 @@
      <div class="sidebar animated fadeInDown">
    <div class="logo-title">
     <div class="title">
-     <img src="https://ablacknut.github.io/images/avatar.png?v=1605452428582" style="width:127px;" />
+     <img src="https://ablacknut.github.io/images/avatar.png?v=1605454389818" style="width:127px;" />
 
      <h3 title=""><a href="/">blacknut</a></h3>
 
@@ -374,10 +374,12 @@ p_str = pickle.dumps(data)
 </code></pre>
 </li>
 <li>发现在反序列化的时候执行了，payload里面的whoami命令。这里面我们又用到了两个新指令<code>c</code>和<code>R</code>。<code>c</code>是读取两个字符串，第一个作为模块名，第二个作为对象名，这里面就是os 和system，然后将os.system压入栈中，os.system是一个可调用对象；R是将一个元组和一个可调用对象弹出堆栈，然后以该元组作为参数调用该可调用的对象，最后将结果压入到堆栈中。可以自己根据字符串，分析一下整个过程。</li>
-<li>并且我们发现，b最终的值还是一个元组，原因是R虽然将system的返回值压入了栈，但是我们又在栈顶放了一个元组，最终栈顶的元组就是我们的反序列化结果。这样我们就可以将<code>'cos\nsystem\n(Vwhoami\ntR'</code>，放到任意一个反序列化字符串前面。不影响最终结果还执行了命令。不过看到过文章说是，某个版本如果结束时栈顶有一个以上元素会报错，那我们可以使用<code>'cos\nsystem\n(Vwhoami\ntR0'</code>，指令<code>0</code>是将栈顶元素弹出。<br>
-#题目复现</li>
+<li>并且我们发现，b最终的值还是一个元组，原因是R虽然将system的返回值压入了栈，但是我们又在栈顶放了一个元组，最终栈顶的元组就是我们的反序列化结果。这样我们就可以将<code>'cos\nsystem\n(Vwhoami\ntR'</code>，放到任意一个反序列化字符串前面。不影响最终结果还执行了命令。不过看到过文章说是，某个版本如果结束时栈顶有一个以上元素会报错，那我们可以使用<code>'cos\nsystem\n(Vwhoami\ntR0'</code>，指令<code>0</code>是将栈顶元素弹出。</li>
 </ul>
 </li>
+</ul>
+<p>#题目复现</p>
+<ul>
 <li>搞明白这么多，我们再来看题目</li>
 <li>首先爬虫里，会提取首页面的地址，并访问保存内容。而且没有限制。如果里面有一个链接指向了本地文件，那就可以本地文件泄露了</li>
 <li>srapy_redis 里面的 <code>bytectf:requests</code>，里面保存了pickle反序列后的request对象，如果可以往这里面加一个代码执行payload的反序列字符串，那就可以执行命令了。</li>
